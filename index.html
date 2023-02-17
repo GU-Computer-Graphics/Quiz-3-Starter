@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Quiz 3</title>
+
+    <style>
+        /* feel free to change the canvas style. If you want to use the entire
+      window, set width: 100% and height: 100% */
+        canvas {
+            display: block;
+            margin: 10px auto;
+            width: 80%;
+            height: 500px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+    </style>
+
+    <script src="./js/three.js"> </script>
+    <script src="./js/SceneUtils.js"></script>
+    <script src="./js/OrbitControls.js"></script>
+    <script src="./js/tw.js"></script>
+    <!-- need dat.gui.js for the GUI -->
+    <script src="./js/dat.gui.js"></script>
+
+
+    <script>
+        //0. create any global variables used in your scene               
+        var carPosition = {
+            x: 0,
+            y: 0,
+            z: 0,
+        }
+
+        var carSize = {
+            h: 15,
+            w: 20,
+            l: 40,
+        }
+
+        var wheelSize = { mult: 1 };
+
+        var wheelRotation = {
+            x: 0,
+            y: 0,
+            z: 0
+        };
+
+        var carMeshMaterials = [
+            new THREE.MeshBasicMaterial({ color: new THREE.Color("red") }),
+            new THREE.MeshBasicMaterial({ color: new THREE.Color("red") }),
+            new THREE.MeshBasicMaterial({ color: new THREE.Color("blue") }),
+            new THREE.MeshBasicMaterial({ color: new THREE.Color("lime") }),
+            new THREE.MeshBasicMaterial({ color: new THREE.Color("black") }),
+        ]
+
+        //will store the random colors for the wheels
+        var randomColors = [];
+
+        //stores the meshes for the car body and wheels
+        var carMeshes = {};
+
+        //creates the car body
+        function createCarBody() {
+            //HINT: (x, z) is your plane, y is your height
+            //1. Create your geometry object
+            var carGeom = new THREE.Geometry();
+            //vertices
+            carGeom.vertices.push(new THREE.Vector3(0, 0, 0)); //0
+            carGeom.vertices.push(new THREE.Vector3(carSize.w, 0, 0)); //1
+            carGeom.vertices.push(new THREE.Vector3(carSize.w, carSize.h, 0)); //2
+            carGeom.vertices.push(new THREE.Vector3(0, carSize.h, 0)); //3
+            carGeom.vertices.push(new THREE.Vector3(carSize.w, 0, carSize.l)); //4        
+            carGeom.vertices.push(new THREE.Vector3(0, 0, carSize.l)); //5        
+
+            //faces
+            carGeom.faces.push(new THREE.Face3(2, 1, 0)); //side 1 bottom
+            carGeom.faces.push(new THREE.Face3(3, 2, 0)); //side 1 top 
+            carGeom.faces.push(new THREE.Face3(0, 1, 5)); //bottom left
+            carGeom.faces.push(new THREE.Face3(1, 4, 5)); //bottom right
+            carGeom.faces.push(new THREE.Face3(5, 2, 3)); //top left 
+            carGeom.faces.push(new THREE.Face3(5, 4, 2)); //top right
+            carGeom.faces.push(new THREE.Face3(0, 5, 3)); //left side
+            carGeom.faces.push(new THREE.Face3(4, 1, 2)); //right side
+
+            //2.5 Calculate normal vectors as necessary
+            carGeom.computeFaceNormals();
+
+            return carGeom;
+        }
+
+        //creates the entire car
+        function createCar() {
+            //2. Create your geometry objects
+            var carGeom = createCarBody(); //car body            
+
+            //see parameters here: https://threejs.org/docs/index.html#api/en/geometries/CylinderGeometry
+            let radiusTop = 5 * wheelSize.mult;
+            let radiusBottom = 5 * wheelSize.mult;
+            let height = 2 * wheelSize.mult;
+            let radialSegments = 16 * wheelSize.mult;
+
+            //wheel geometry
+            var wheelGeom = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments);
+
+            //https://threejs.org/docs/#api/en/objects/Mesh
+            //3. Create a mesh for your geometry objects   
+            carMeshes.carMesh = new THREE.Mesh(carGeom, carMeshMaterials[0]);
+
+            //TODO: add interpolated color to wheels so we can see them rotate!
+            carMeshes.wheel1Mesh = new THREE.Mesh(wheelGeom, carMeshMaterials[4]);
+
+            //clone wheel1 for the other 3 wheels
+            carMeshes.wheel2Mesh = carMeshes.wheel1Mesh.clone();
+            carMeshes.wheel3Mesh = carMeshes.wheel1Mesh.clone();
+            carMeshes.wheel4Mesh = carMeshes.wheel1Mesh.clone();
+
+            //4. Add the objects to the scene        
+            scene.add(carMeshes.carMesh);
+            scene.add(carMeshes.wheel1Mesh);
+            scene.add(carMeshes.wheel2Mesh);
+            scene.add(carMeshes.wheel3Mesh);
+            scene.add(carMeshes.wheel4Mesh);
+
+            //3.5 wheel rotation, need to rotate z axis to make wheel... wheel orientation!
+            //TODO: add a comment here
+            //Argument1: Why 0.01745 * wheelRotation.x?
+            //Argument2: Why 0?
+            //Argument3: Why Math.PI / 2? From L13 activity, what could we use instead of Math.PI/2?
+            carMeshes.wheel1Mesh.rotation.set(0.01745 * wheelRotation.x, 0, Math.PI / 2);
+            carMeshes.wheel2Mesh.rotation.set(0.01745 * wheelRotation.x, 0, Math.PI / 2);
+            carMeshes.wheel3Mesh.rotation.set(0.01745 * wheelRotation.x, 0, Math.PI / 2);
+            carMeshes.wheel4Mesh.rotation.set(0.01745 * wheelRotation.x, 0, Math.PI / 2);
+
+            // //4.5 set geometry positions
+            carMeshes.carMesh.position.set(carPosition.x, carPosition.y, carPosition.z); //x,y,z)
+            carMeshes.wheel1Mesh.position.set(carPosition.x, carPosition.y, carPosition.z + (0.15 * carSize.l)); //x,y,z
+            carMeshes.wheel2Mesh.position.set(carPosition.x, carPosition.y, carPosition.z + (0.65 * carSize.l)); //x,y,z
+            carMeshes.wheel3Mesh.position.set(carPosition.x + carSize.w, carPosition.y, carPosition.z + (0.15 * carSize.l)); //x,y,z
+            carMeshes.wheel4Mesh.position.set(carPosition.x + carSize.w, carPosition.y, carPosition.z + (0.65 * carSize.l)); //x,y,z
+        }
+
+        function removeCar() {
+            //remove
+            scene.remove(carMeshes.carMesh);
+            scene.remove(carMeshes.wheel1Mesh);
+            scene.remove(carMeshes.wheel2Mesh);
+            scene.remove(carMeshes.wheel3Mesh);
+            scene.remove(carMeshes.wheel4Mesh);
+        }
+
+        function moveCarFowardZ() {
+            removeCar();
+            //adjust
+            carPosition.z += 4;
+            createCar()
+            //render
+            TW.render();
+        }
+
+
+        function moveCarBackwardZ() {
+            //remove
+            removeCar();
+            //adjust
+            carPosition.z -= 4;
+            createCar()
+            //render
+            TW.render();
+        }
+
+        function changeCarColor() {
+            switch (event.key) {
+                case '1':
+                    carMeshMaterials[0] =
+                        new THREE.MeshBasicMaterial(carMeshMaterials[1]);
+                    break;
+                case '2':
+                    carMeshMaterials[0] =
+                        new THREE.MeshBasicMaterial(carMeshMaterials[2]);
+                    break;
+                case '3':
+                    carMeshMaterials[0] =
+                        new THREE.MeshBasicMaterial(carMeshMaterials[3]);
+                    break;
+                case '4':
+                    carMeshMaterials[0] =
+                        new THREE.MeshBasicMaterial({ color: new THREE.Color(Math.random() * 0xffffff) });
+                    break;
+                default:
+                    carMeshMaterials[0] =
+                        new THREE.MeshBasicMaterial({ color: new THREE.Color(Math.random() * 0xffffff) });
+                    break;
+            }
+
+            updateScene();
+        }
+
+        function updateScene() {
+            removeCar();
+            createCar();
+            TW.render();
+        }
+
+
+        //TODO: add callback function implementation for wheelUp/Down and rotate
+        //increases wheel size
+        //only increases multiplier between 1 and 5
+        function wheelUp() {
+            //TODO: implement
+        }
+
+        //decreases wheel size
+        //only decreases multiplier between 1 and 5
+        function wheelDown() {
+            //TODO: implement
+        }
+
+        //rotates wheel
+        //only on one axis, which?
+        function rotateWheel() {
+            //TODO: implement
+        }
+
+    </script>
+
+</head>
+
+<body>
+
+    <h1>A simple (colored) car</h1>
+
+    <script>
+
+        //0. setup colors -- need 240 for our wheel maximum scale size
+        for (let index = 0; index < 240; index++) {
+            let color = new THREE.Color(Math.random() * 0xffffff);
+            randomColors.push(color);
+        }
+
+        //1.  Create an initial empty Scene
+        var scene = new THREE.Scene();
+
+        //2. Create car
+        createCar();
+
+        //5. Create a renderer to render the scene
+        var renderer = new THREE.WebGLRenderer();
+
+        //6. TW.mainInit() initializes TW, adds the canvas to the document,
+        // enables display of 3D coordinate axes, sets up keyboard controls
+        TW.mainInit(renderer, scene);
+
+        //7. Set up a camera for the scene
+        // bounding box should be set based on the objects being rendered.
+        var state = TW.cameraSetup(renderer,
+            scene,
+            {
+                minx: -carSize.w * 2, maxx: carSize.l * 2,
+                miny: -carSize.w * 2, maxy: carSize.w * 2,
+                minz: -carSize.w * 2, maxz: carSize.w * 2
+            });
+
+        TW.toggleAxes("Show");
+
+        //add callback for keybind
+        TW.setKeyboardCallback('w', moveCarFowardZ, "Move Car Forward");
+        TW.setKeyboardCallback('s', moveCarBackwardZ, "Move Car Backward");
+        TW.setKeyboardCallback('1', changeCarColor, "Car Color Blue");
+        TW.setKeyboardCallback('2', changeCarColor, "Car Color Red");
+        TW.setKeyboardCallback('3', changeCarColor, "Car Color Lime");
+        TW.setKeyboardCallback('4', changeCarColor, "Car Color Random");
+
+        //TODO: add 3 callbacks for +, -, r        
+
+
+        //setup GUI
+        //TODO: add GUI controls for
+        //position z,
+        //car size l, w, h,
+        //wheel size, and
+        //wheel rotation
+        //hint: on change call the updateScene function
+        //see example dat.gui doc image on Canvas
+
+
+    </script>
+
+    <!-- NOTE: the TW helper script appends a canvas to this HTML document, 
+  we'd need to add one ourselves otherwise! e.g.:-->
+
+    <!-- <canvas width="1433" height="500" style="width: 1433px; height: 500px;"></canvas> -->
+
+</body>
+
+</html>
